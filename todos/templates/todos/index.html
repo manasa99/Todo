@@ -1,0 +1,256 @@
+{% extends 'todos/base.html' %}
+
+{% block title %}
+    <title>Todo list</title>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+
+        <!-- title row -->
+        <div class="row">
+            <div class="offset-md-2 col-lg-9">
+                <div class="page-header">
+                    <h1>
+                        Todo List
+                    </h1>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add a todo row -->
+        <div class="row">
+            <div class="offset-md-2 col-lg-9">
+                <form method="post" action="{% url 'todos:add' %}">
+                    {% csrf_token %}
+                    <div class="form-row">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" name="title" placeholder="Do laundry" required>
+                        </div>
+                        <div class="col-md-6">
+                            <button type="submit" name="submit" class="btn btn-outline-primary">
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <hr/>
+
+        <!-- todo list row -->
+        <div class="row">
+            <div class="offset-md-2 col-lg-6">
+                <div class="list-group">
+                    {% for todo in todo_list %}
+                        <div class="list-group-item {% if todo.completed %} todo-complete {% endif %}">
+                            <form style="display: inline;" method="post" action="{% url 'todos:update' todo.id %}">
+                                {% csrf_token %}
+                                <input type="checkbox" name="completed" onchange="this.form.submit()"
+                                        {% if todo.completed %} checked
+                                        {% endif %} class="todo-status-checkbox"
+                                       title="{% if not todo.completed %} mark as done {% else %} mark undone {% endif %}">
+                            </form>
+
+                            <a id="row_{{ todo.id }}">
+                                {{ todo.title }}
+                            </a>
+                            <a class="todo-item" href="#" data-toggle="modal"
+                               id={{ todo.id }} data-target="#todoDetail{{ todo.id }}" title="Edit">
+                                <i class="far fa-edit" style="float: right"></i>
+                            </a>
+                            &nbsp; <a href="/todos/{{ todo.id }}/delete" title="Delete">
+                            <i class="far fa-trash-alt"></i>
+
+                        </a>
+
+                        </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="todoModal" tabindex="-1" aria-labelledby="todoModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="todoModalLabel">Todo Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <table>
+                            <tr>
+                                <td>id:</td>
+                                <td><span id="todoId"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Title:</td>
+                                <td><span id="todoTitle"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Completed:</td>
+                                <td><span id="todoComplete"></span></td>
+                            </tr>
+
+                            <tr>
+                                <td>Priority:</td>
+                                <td><span id="todoPriority"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Due Date:</td>
+                                <td><span id="todoDueDate"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Completion Date:</td>
+                                <td><span id="todoCompletionDate"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Project:</td>
+                                <td><span id="todoProject"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Tags:</td>
+                                <td><span id="todoTags"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Estimate:</td>
+                                <td><span id="todoEstimate"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Share:</td>
+                                <td><span id="todoShare"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Images:</td>
+                                <td><span id="todoImages"></span></td>
+                            </tr>
+                            <tr>
+                                <td>References:</td>
+                                <td><span id="todoReferences"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Related:</td>
+                                <td><span id="todoRelated"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Notes:</td>
+                                <td><span id="todoNotes"></span></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" id="saveBtn">Save</button>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery library -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Bootstrap library -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.0/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.0/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script>
+    function formatDateForInput(date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  const hours = `${date.getHours()}`.padStart(2, '0');
+  const minutes = `${date.getMinutes()}`.padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+        $(document).ready(function () {
+            var originalTodo;
+            $('.todo-item').click(function () {
+                console.log(this.id);
+                var todoId = this.id;
+                // Fetch todo data using AJAX
+                $.ajax({
+                    url: '/todos/v1/api/' + todoId + '/',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        // Populate the modal with the todo item data
+                        originalTodo = data;
+
+                        $('#todoModalLabel').text('Edit Todo');
+                        $('#todoId').text(todoId);
+
+                        $('#todoTitle').html('<input type="text" id="titleInput" class="form-control" placeholder="Title" value="' + data.title + '">');
+                        $('#todoComplete').html('<select id="completedInput" class="form-select"><option value="true"' + (data.completed ? ' selected' : '') + '>Yes</option><option value="false"' + (!data.completed ? ' selected' : '') + '>No</option></select>');
+                        $('#todoPriority').html('<select id="prioritySelect" class="form-select"><option value="1"' + (data.priority == 1 ? ' selected' : '') + '>Low</option><option value="2"' + (data.priority == 2 ? ' selected' : '') + '>Medium</option><option value="3"' + (data.priority == 3 ? ' selected' : '') + '>High</option></select>');
+                        $('#todoDueDate').html('<input type="datetime-local" id="dueDateInput" class="form-control" placeholder="Due Date" value="' + (data.due_date != null ? formatDateForInput(new Date(data.due_date)) : formatDateForInput(new Date())) + '">');
+                        $('#todoCompletionDate').html('<input type="datetime-local" id="completionDateInput" class="form-control" placeholder="Completion Date" value="' + (data.completion_date != null ? formatDateForInput(new Date(data.completion_date)) : formatDateForInput(new Date())) + '">');
+                        $('#todoProject').html('<input type="text" id="projectInput" class="form-control" placeholder="Project" value="' + (data.project != null ? data.project.join(', ') : '') + '">');
+                        $('#todoTags').html('<input type="text" id="tagsInput" class="form-control" placeholder="Tags" value="' + (data.tags != null ? data.tags.join(', ') : '') + '">');
+                        $('#todoEstimate').html('<input type="text" id="estimateInput" class="form-control" placeholder="Estimate 1h,1d,1w,1m etc" value="' + (data.estimate != null ? data.estimate : '') + '">');
+                        $('#todoImages').html('<input type="text" id="imagesInput" class="form-control" placeholder="Images" value="' + (data.images != null ? data.images.join(', ') : '') + '">');
+                        $('#todoReferences').html('<input type="text" id="referencesInput" class="form-control" placeholder="References" value="' + (data.references != null ? data.references.join(', ') : '') + '">');
+                        {#$('#todoRelated').html( '<input type="text" id="relatedInput" class="form-control" placeholder="Related" value="' +( data.references!=null?data.references.join(', '):'') + '">');#}
+                        $('#todoNotes').html('<textarea id="notesTextarea" class="form-control" placeholder="Notes">' + (data.note_array != null ? data.note_array.join(', ') : '') + '</textarea>');
+                        {#$('.modal-footer').html('<button type="button" class="btn btn-secondary" id="savebtn" >Save</button>')#}
+                        // Show the modal
+                        $('#todoModal').modal('show');
+                    }
+                });
+            });
+            $(document).on('click', '#saveBtn', function () {
+                const todoId = $('#todoId').text();
+                const title = $('#titleInput').val();
+                const priority = $('#prioritySelect').val();
+                const dueDate = $('#dueDateInput').val();
+                const completed = $('#completedInput').val();
+                const completionDate = $('#completionDateInput').val();
+                const project = $('#projectInput').val();
+                const tags = $('#tagsInput').val();
+                const estimate = $('#estimateInput').val();
+                const share = $('#shareSelect').val();
+                const images = $('#imagesInput').val();
+                const references = $('#referencesInput').val();
+                const related = $('#relatedInput').val();
+                const note_array = $('#notesTextarea').val();
+                console.log(todoId, title, priority, dueDate, completionDate, project, tags, estimate, images, references, related, note_array)
+                // Check for modified fields
+                let data = {};
+                data.title = title.trim();
+                data.completed = completed.trim() == 'true' ? true : false;
+                if (priority !== originalTodo.priority) data.priority = priority;
+                if (dueDate !== originalTodo.due_date && (dueDate != undefined && dueDate != '')) data.due_date = dueDate;
+                if (completionDate !== originalTodo.completion_date && (completionDate != null && completionDate != '')) data.completion_date = completionDate;
+                if (project !== originalTodo.project && (project != undefined && project != [''])) data.project = project.split(",").map((val) => val.trim());
+                if (tags !== originalTodo.tags && (tags != undefined && tags != [''])) data.tags = tags.split(",").map((val) => val.trim());
+                if (estimate !== originalTodo.estimate && (estimate != undefined && estimate != [''])) data.estimate = estimate;
+                if (share !== originalTodo.share && (share != undefined && share != [''] && share != null)) data.share = share.split(",").map((val) => val.trim());
+                if (images !== originalTodo.images && (images != undefined && images != [''] && images != null)) data.images = images.split(",").map((val) => val.trim());
+                if (references !== originalTodo.references && (references != undefined && references != [''] && references != null)) data.references = references.split(",").map((val) => val.trim());
+                if (related !== originalTodo.related && (related != undefined && related != [''])) data.related = related.split(",").map((val) => val.trim());
+                if (note_array !== originalTodo.note_array && (note_array != undefined && note_array != [''])) data.note_array = note_array.split(",").map((val) => val.trim());
+                console.log(data)
+                {#confirm("Sure you want to save?")#}
+                // Send modified data to server
+                $.ajax({
+                    method: "PATCH",
+                    contentType: "application/json",
+                    url: '/todos/v1/api/' + todoId + "/",
+                    data: JSON.stringify(data),
+                    success: function (response) {
+                        console.log(response);
+                        // Refresh the page
+                        location.reload();
+                    },
+                    error: function (error) {
+                        console.log(error);
+                    }
+                });
+            });
+        });
+    </script>
+
+{% endblock %}
