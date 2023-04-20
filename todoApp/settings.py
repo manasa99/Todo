@@ -81,7 +81,7 @@ DATABASES = {
         'NAME': 'todoapp',
         'USER': 'postgres',
         'PASSWORD': 'postgres',
-        'HOST': 'localhost',
+        'HOST': '34.172.127.202',
         'PORT': '5432',
     }
 }
